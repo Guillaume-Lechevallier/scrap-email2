@@ -13,7 +13,7 @@ import os
 # Cette regex est plus stricte que celle utilisée pour l'extraction initiale
 # Utilisation de \b (word boundary) pour s'assurer que l'email se termine correctement
 # Limitation des TLDs à 2-6 caractères pour éviter de capturer des caractères indésirables
-EMAIL_REGEX = r'([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-]{2,6})\b'
+EMAIL_REGEX = r'[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z0-9-.]+'
 
 def clean_email(email):
     """
@@ -26,8 +26,28 @@ def clean_email(email):
         str: Adresse email nettoyée ou chaîne vide si invalide
     """
     match = re.search(EMAIL_REGEX, email)
-    if match:
-        return match.group(1)
+    if not match:
+        return ""
+
+    candidate = match.group(0)
+    # Supprimer les suffixes majuscules accidentels (ex: "Du", "Nos", "S")
+    candidate = re.sub(r'[A-Z][A-Za-z]*$', '', candidate)
+
+    local, domain = candidate.split('@', 1)
+
+    # Garder uniquement la dernière séquence alphabétique du local
+    letters = re.findall(r'[A-Za-z]+(?:-[A-Za-z]+)*', local)
+    if letters:
+        local = letters[-1]
+    else:
+        local = re.sub(r'^[0-9]+', '', local)
+
+    # Retirer tout texte après le TLD
+    domain = re.sub(r'(\.[a-zA-Z]{2,6}).*$', r'\1', domain)
+
+    cleaned = f"{local}@{domain}"
+    if re.match(r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,6}$', cleaned):
+        return cleaned
     return ""
 
 def clean_emails_file(input_file, output_file):
